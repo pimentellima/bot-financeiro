@@ -36,3 +36,7 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+# drizzle
+packages/drizzle/migrations/*
+!packages/drizzle/migrations/.keep

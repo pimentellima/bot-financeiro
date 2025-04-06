@@ -1,0 +1,28 @@
+{
+    "name": "@bot-financeiro/drizzle",
+    "version": "1.0.0",
+    "main": "index.ts",
+    "type": "module",
+    "scripts": {
+        "generate": "drizzle-kit generate:pg",
+        "push": "drizzle-kit push",
+        "studio": "drizzle-kit studio",
+        "migrate": "ts-node migrate.ts"
+    },
+    "exports": {
+        ".": {
+            "import": "./index.ts"
+        }
+    },
+    "devDependencies": {
+        "@types/pg": "^8.11.11",
+        "dotenv": "^16.4.7",
+        "tsx": "^4.19.3",
+        "typescript": "^5.8.3"
+    },
+    "dependencies": {
+        "drizzle-kit": "^0.30.6",
+        "drizzle-orm": "^0.41.0",
+        "pg": "^8.14.1"
+    }
+}
