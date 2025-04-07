@@ -4,12 +4,14 @@
     "scripts": {
         "build": "turbo run build",
         "dev": "turbo run dev",
+        "dev:server": "turbo run dev --filter server",
         "lint": "turbo run lint",
         "format": "prettier --write \"**/*.{ts,tsx,md}\"",
         "check-types": "turbo run check-types",
-        "studio": "drizzle-kit studio",
-        "generate": "drizzle-kit generate:pg --config drizzle.config.ts",
-        "push": "drizzle-kit push:pg --config drizzle.config.ts"
+        "db:studio": "drizzle-kit studio",
+        "db:generate": "drizzle-kit generate --config packages/drizzle/drizzle.config.ts",
+        "db:push": "drizzle-kit push --config packages/drizzle/drizzle.config.ts",
+        "db:migrate": "ts-node packages/drizzle/migrate.ts"
     },
     "devDependencies": {
         "prettier": "^3.5.3",
