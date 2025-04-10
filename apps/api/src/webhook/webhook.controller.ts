@@ -6,17 +6,20 @@ import {
     Post,
     Query,
     Req,
+    UnprocessableEntityException,
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { WhatsappService } from 'src/whatsapp/whatsapp.service'
 import { OpenAIService } from '../openai/openai.service'
 import { WhatsAppWebhookPayload } from 'src/whatsapp/whatsapp-webhook-payload.interface'
+import { UsersService } from 'src/users/users.service'
 
 @Controller('webhook')
 export class WebhookController {
     constructor(
         private readonly openAIService: OpenAIService,
-        private readonly metaService: WhatsappService
+        private readonly whatsappService: WhatsappService,
+        private readonly userService: UsersService
     ) {
         ConfigService
     }
@@ -27,7 +30,7 @@ export class WebhookController {
         @Query('hub.challenge') hubChallenge: string,
         @Query('hub.verify_token') hubVerificationToken: string
     ) {
-        return await this.metaService.verifyToken(
+        return await this.whatsappService.verifyToken(
             hubVerificationToken,
             hubChallenge
         )
@@ -37,11 +40,25 @@ export class WebhookController {
     @HttpCode(201)
     async respondMessage(@Body() data: WhatsAppWebhookPayload) {
         if (data.entry[0].changes[0]?.value.messages?.[0]?.type === 'text') {
+            const waId = data.entry[0].changes[0].value.contacts?.[0].wa_id
+            if (!waId) {
+                throw new UnprocessableEntityException('Invalid waId')
+            }
+            const user = await this.userService.findOrCreateUserByWaId(waId)
+
             const message = getMessageFromPayload(data)
-            const aiResponse = await this.openAIService.generateResponse(
-                message
-            )
-            await this.metaService.sendMessage(aiResponse)
+            try {
+                const aiResponse = await this.openAIService.generateAiResponse(
+                    message,
+                    user.id
+                )
+                await this.whatsappService.sendMessage(aiResponse)
+            } catch (e) {
+                console.log(e)
+                await this.whatsappService.sendMessage(
+                    'Ocorreu um erro com a solicitação. Por favor, tente novamente.'
+                )
+            }
         }
     }
 }
