@@ -1,15 +1,18 @@
-import 'dotenv/config'
+import { Provider } from '@nestjs/common'
+import { ConfigService } from '@nestjs/config'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { Pool } from 'pg'
-import * as schema from './schema'
+import { EnvironmentEnums } from 'src/enums/environment.enums'
 import { DRIZZLE } from './drizzle.constants'
+import * as schema from './schema'
 
-export const DrizzleProvider = {
+export const DrizzleProvider: Provider = {
     provide: DRIZZLE,
-    useFactory: () => {
+    useFactory: (configService: ConfigService) => {
         const pool = new Pool({
-            connectionString: process.env.DATABASE_URL,
+            connectionString: configService.get(EnvironmentEnums.DATABASE_URL),
         })
         return drizzle(pool, { schema })
     },
+    inject: [ConfigService],
 }

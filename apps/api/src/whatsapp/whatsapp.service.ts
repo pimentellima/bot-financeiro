@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { EnvironmentEnums } from 'src/enums/environment.enums'
+import { sendMessageToWhatsapp } from 'src/utils/send-message-to-whatsapp'
 
 @Injectable()
 export class WhatsappService {
@@ -32,27 +33,19 @@ export class WhatsappService {
         throw new UnauthorizedException('Invalid verification token')
     }
 
-    async sendMessage(message: string): Promise<any> {
-        const url = `https://graph.facebook.com/v22.0/${this.numberId}/messages`
-        const body = JSON.stringify({
-            messaging_product: 'whatsapp',
-            to: '5575991698122',
-            type: 'text',
-            text: { body: message },
-        })
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-                Authorization: `Bearer ${this.apiToken}`,
-                'Content-Type': 'application/json',
-            },
-            body,
-        })
+    async sendMessage(number: string, message: string): Promise<any> {
+        const response = await sendMessageToWhatsapp(
+            this.apiToken,
+            this.numberId,
+            number,
+            message
+        )
         if (!response.ok) {
             throw new HttpException(
-                'Error sending message',
-                HttpStatus.INTERNAL_SERVER_ERROR
+                response.statusText || 'Internal Error',
+                response.status || HttpStatus.INTERNAL_SERVER_ERROR
             )
         }
+        return await response.json()
     }
 }

@@ -10,14 +10,15 @@ import {
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { WhatsappService } from 'src/whatsapp/whatsapp.service'
-import { OpenAIService } from '../openai/openai.service'
+import { AiToolsService } from '../ai-tools/ai-tools.service'
 import { WhatsAppWebhookPayload } from 'src/whatsapp/whatsapp-webhook-payload.interface'
 import { UsersService } from 'src/users/users.service'
+import { getNumberFromWaId } from 'src/whatsapp/get-number-from-waid'
 
 @Controller('webhook')
 export class WebhookController {
     constructor(
-        private readonly openAIService: OpenAIService,
+        private readonly aiToolsService: AiToolsService,
         private readonly whatsappService: WhatsappService,
         private readonly userService: UsersService
     ) {
@@ -46,19 +47,15 @@ export class WebhookController {
             }
             const user = await this.userService.findOrCreateUserByWaId(waId)
 
-            const message = getMessageFromPayload(data)
-            try {
-                const aiResponse = await this.openAIService.generateAiResponse(
-                    message,
-                    user.id
-                )
-                await this.whatsappService.sendMessage(aiResponse)
-            } catch (e) {
-                console.log(e)
-                await this.whatsappService.sendMessage(
-                    'Ocorreu um erro com a solicitação. Por favor, tente novamente.'
-                )
-            }
+            const userMessage = getMessageFromPayload(data)
+            const aiResponse = await this.aiToolsService.processUserMessage(
+                userMessage,
+                user.id
+            )
+            await this.whatsappService.sendMessage(
+                getNumberFromWaId(waId),
+                aiResponse
+            )
         }
     }
 }

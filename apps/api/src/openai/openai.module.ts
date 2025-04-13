@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common'
-import { DrizzleModule } from 'src/drizzle/drizzle.module'
+import { OpenAiProvider } from './openai.provider'
 
 @Module({
-    imports: [DrizzleModule],
-    providers: [OpenaiModule],
+    providers: [OpenAiProvider],
+    exports: [OpenAiProvider],
 })
-export class OpenaiModule {}
+export class OpenAiModule {}

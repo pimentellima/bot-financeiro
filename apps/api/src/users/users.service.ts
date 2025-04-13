@@ -11,6 +11,19 @@ export class UsersService {
         private readonly db: NodePgDatabase<typeof schema>
     ) {}
 
+    async getWaIdByUserId(userId: number) {
+        const [user] = await this.db
+            .select()
+            .from(schema.users)
+            .where(eq(schema.users.id, userId))
+
+        if (!user) {
+            throw new Error('User not found')
+        }
+
+        return user.waId
+    }
+
     async findOrCreateUserByWaId(waId: string) {
         const [user] = await this.db
             .select()

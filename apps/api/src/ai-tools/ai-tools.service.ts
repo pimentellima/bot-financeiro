@@ -1,30 +1,26 @@
-import { createOpenAI, OpenAIProvider } from '@ai-sdk/openai'
+import { OpenAIProvider } from '@ai-sdk/openai'
 import { convertDate } from '@bot-financeiro/utils'
 import { Inject, Injectable } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
 import { generateText, tool } from 'ai'
 import { sql } from 'drizzle-orm'
 import { NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { DRIZZLE } from 'src/drizzle/drizzle.constants'
-import { EnvironmentEnums } from 'src/enums/environment.enums'
+import { NotifyUserService } from 'src/notify-user/notify-user.service'
+import { OPENAI } from 'src/openai/openai.constants'
 import { z } from 'zod'
 import * as schema from '../drizzle/schema'
 
 @Injectable()
-export class OpenAIService {
-    private openai: OpenAIProvider
-
+export class AiToolsService {
     constructor(
+        @Inject(OPENAI)
+        private readonly openAi: OpenAIProvider,
         @Inject(DRIZZLE)
         private readonly db: NodePgDatabase<typeof schema>,
-        private readonly configService: ConfigService
-    ) {
-        this.openai = createOpenAI({
-            apiKey: this.configService.get(EnvironmentEnums.OPENAI_API_KEY),
-        })
-    }
+        private readonly notifyUser: NotifyUserService
+    ) {}
 
-    async generateAiResponse(message: string, userId: number): Promise<string> {
+    async processUserMessage(message: string, userId: number): Promise<string> {
         const generateQueryTool = tool({
             description:
                 "Generate a postgreSQL compatible query to get information from the database based on the user's question",
@@ -75,8 +71,24 @@ export class OpenAIService {
             },
         })
 
+        const createReminderTool = tool({
+            description:
+                'Create a reminder for the user with a given description and date.',
+            parameters: z.object({
+                description: z.string().min(1),
+                date: z.date(),
+            }),
+            execute: async ({ description, date }) => {
+                await this.notifyUser.scheduleReminderForUser(
+                    userId,
+                    date,
+                    description
+                )
+            },
+        })
+
         const { text } = await generateText({
-            model: this.openai('gpt-4o-2024-05-13'),
+            model: this.openAi('gpt-4o-2024-05-13'),
             messages: [{ content: message, role: 'user' }],
             system,
             maxSteps: 7,
