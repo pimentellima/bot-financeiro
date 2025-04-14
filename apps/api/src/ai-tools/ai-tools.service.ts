@@ -65,7 +65,6 @@ export class AiToolsService {
                     const result = await this.db.execute(sql.raw(query))
                     return { result: result.rows }
                 } catch (error) {
-                    console.log(error)
                     return { error }
                 }
             },
@@ -76,7 +75,11 @@ export class AiToolsService {
                 'Create a reminder for the user with a given description and date.',
             parameters: z.object({
                 description: z.string().min(1),
-                date: z.date(),
+                date: z.coerce
+                    .date()
+                    .describe(
+                        `The date of the reminder. Current date is: ${new Date()}`
+                    ),
             }),
             execute: async ({ description, date }) => {
                 await this.notifyUser.scheduleReminderForUser(
@@ -84,6 +87,8 @@ export class AiToolsService {
                     date,
                     description
                 )
+
+                return 'Lembre criado'
             },
         })
 
@@ -91,8 +96,9 @@ export class AiToolsService {
             model: this.openAi('gpt-4o-2024-05-13'),
             messages: [{ content: message, role: 'user' }],
             system,
-            maxSteps: 7,
+            maxSteps: 3,
             tools: {
+                createReminder: createReminderTool,
                 generateQuery: generateQueryTool,
                 queryDatabase: queryDatabaseTool,
                 createStatement: createStatementTool,
@@ -114,7 +120,10 @@ const system = `You are a helpful financial assistant. Use the tools provided to
             amount NUMERIC(10, 2),
             created_at TEXT DEFAULT 'now()'
         );
-        Only respond to questions using information from tool calls.
+        If the user asks about financial information, only respond to questions using information from tool calls.
+        If the user asks to schedule a reminder, use the createReminder tool.
+        If the user asks to create a financial statement, use the createStatement tool.
+        If the user asks to query the database, use the generateQuery tool to create a query and then use the queryDatabase tool to execute it.
 
         When you use the ILIKE operator, convert both the search term and the field to lowercase using LOWER() function. For example: LOWER(description) ILIKE LOWER('%search_term%').
         You will respond based on information retrieved from the database.

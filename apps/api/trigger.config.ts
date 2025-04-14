@@ -1,9 +1,7 @@
-import 'dotenv/config'
 import {
-    defineConfig,
-    ResolveEnvironmentVariablesFunction,
+    defineConfig
 } from '@trigger.dev/sdk/v3'
-import { EnvironmentEnums } from 'src/enums/environment.enums'
+import 'dotenv/config'
 
 export default defineConfig({
     project: 'proj_xgufbpbpfjtphdnbhtqm',
@@ -25,29 +23,3 @@ export default defineConfig({
     },
     dirs: ['./src/trigger'],
 })
-
-export const resolveEnvVars: ResolveEnvironmentVariablesFunction = async ({
-    env,
-    environment,
-    projectRef,
-}) => {
-    return {
-        variables: [
-            {
-                name: EnvironmentEnums.TRIGGER_API_KEY,
-                required: true,
-                value: process.env[EnvironmentEnums.TRIGGER_API_KEY]!,
-                description: 'The API key for the Trigger.dev API',
-                type: 'secret',
-            },
-            {
-                name: EnvironmentEnums.WHATSAPP_API_TOKEN,
-                required: true,
-                value: process.env[EnvironmentEnums.WHATSAPP_API_TOKEN]!,
-                description: 'The API token for the WhatsApp API',
-                type: 'secret',
-            },
-            
-        ],
-    }
-}
