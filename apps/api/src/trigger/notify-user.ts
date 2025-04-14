@@ -17,7 +17,9 @@ export const notifyUserTask = task({
             payload.message
         )
         if (!response.ok) {
-            throw new Error('Error sending message to whatsapp API')
+            throw new Error(
+                `Error sending message to whatsapp API. Status: ${response.status}`
+            )
         }
         return { success: true }
     },

@@ -10,16 +10,19 @@ import {
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { WhatsappService } from 'src/whatsapp/whatsapp.service'
-import { AiToolsService } from '../ai-tools/ai-tools.service'
+import { AiService } from '../ai/ai.service'
 import { WhatsAppWebhookPayload } from 'src/whatsapp/whatsapp-webhook-payload.interface'
 import { UsersService } from 'src/users/users.service'
 import { getNumberFromWaId } from 'src/whatsapp/get-number-from-waid'
+import { ChatService } from 'src/chat/chat.service'
+import { appendResponseMessages, Message } from 'ai'
 
 @Controller('webhook')
 export class WebhookController {
     constructor(
-        private readonly aiToolsService: AiToolsService,
+        private readonly aiService: AiService,
         private readonly whatsappService: WhatsappService,
+        private readonly chatService: ChatService,
         private readonly userService: UsersService
     ) {
         ConfigService
@@ -46,15 +49,35 @@ export class WebhookController {
                 throw new UnprocessableEntityException('Invalid waId')
             }
             const user = await this.userService.findOrCreateUserByWaId(waId)
+            const message = getMessageFromPayload(data)
 
-            const userMessage = getMessageFromPayload(data)
-            const aiResponse = await this.aiToolsService.processUserMessage(
-                userMessage,
+            const userMessages = (
+                await this.chatService.findOrCreateChatByUserId(user.id)
+            ).messages as Message[]
+
+            const messages: Message[] = [
+                ...userMessages.slice(-20),
+                {
+                    id: crypto.randomUUID(),
+                    role: 'user',
+                    content: message,
+                },
+            ]
+
+            const aiResponse = await this.aiService.continueConversation(
+                messages,
+                user.id
+            )
+            await this.chatService.saveChat(
+                appendResponseMessages({
+                    messages,
+                    responseMessages: aiResponse.response.messages,
+                }),
                 user.id
             )
             await this.whatsappService.sendMessage(
                 getNumberFromWaId(waId),
-                aiResponse
+                aiResponse.text
             )
         }
     }

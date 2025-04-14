@@ -1,11 +1,13 @@
 import {
     boolean,
     date,
+    integer,
+    json,
     numeric,
     pgTable,
     serial,
     text,
-    varchar,
+    timestamp,
 } from 'drizzle-orm/pg-core'
 
 export const users = pgTable('users', {
@@ -24,5 +26,16 @@ export const statements = pgTable('statements', {
     description: text('description'),
     date: date('date'),
     amount: numeric('amount', { precision: 10, scale: 2 }),
-    createdAt: text('created_at').default('now()'),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
+export const chats = pgTable('chats', {
+    id: serial('id').primaryKey(),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    messages: json('messages').notNull(),
+    userId: integer('userId')
+        .notNull()
+        .unique()
+        .references(() => users.id, { onDelete: 'cascade' }),
 })

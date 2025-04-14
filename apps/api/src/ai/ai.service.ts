@@ -1,7 +1,11 @@
 import { OpenAIProvider } from '@ai-sdk/openai'
 import { convertDate } from '@bot-financeiro/utils'
 import { Inject, Injectable } from '@nestjs/common'
-import { generateText, tool } from 'ai'
+import {
+    generateText,
+    Message,
+    tool
+} from 'ai'
 import { sql } from 'drizzle-orm'
 import { NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { DRIZZLE } from 'src/drizzle/drizzle.constants'
@@ -11,7 +15,7 @@ import { z } from 'zod'
 import * as schema from '../drizzle/schema'
 
 @Injectable()
-export class AiToolsService {
+export class AiService {
     constructor(
         @Inject(OPENAI)
         private readonly openAi: OpenAIProvider,
@@ -20,7 +24,7 @@ export class AiToolsService {
         private readonly notifyUser: NotifyUserService
     ) {}
 
-    async processUserMessage(message: string, userId: number): Promise<string> {
+    async continueConversation(messages: Message[], userId: number) {
         const generateQueryTool = tool({
             description:
                 "Generate a postgreSQL compatible query to get information from the database based on the user's question",
@@ -92,9 +96,9 @@ export class AiToolsService {
             },
         })
 
-        const { text } = await generateText({
+        return await generateText({
             model: this.openAi('gpt-4o-2024-05-13'),
-            messages: [{ content: message, role: 'user' }],
+            messages,
             system,
             maxSteps: 3,
             tools: {
@@ -104,8 +108,6 @@ export class AiToolsService {
                 createStatement: createStatementTool,
             },
         })
-
-        return text
     }
 }
 

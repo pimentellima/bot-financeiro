@@ -22,7 +22,6 @@ export class NotifyUserService {
         if (!waId) {
             throw new Error('User number not found')
         }
-        console.log({ delay: date })
         return notifyUserTask.trigger(
             { message, number: getNumberFromWaId(waId) },
             { concurrencyKey: `${userId}-reminder`, delay: date }

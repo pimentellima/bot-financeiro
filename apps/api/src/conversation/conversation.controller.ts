@@ -19,7 +19,7 @@ export class ConversationController {
     @HttpCode(200)
     async scheduleMessage() {
         const today = new Date()
-        const date = new Date(today.getTime() + 5 * 1000)
+        const date = new Date(today.getTime() + 1 * 1000)
         return await this.notifyUser.scheduleReminderForUser(
             17,
             date,
