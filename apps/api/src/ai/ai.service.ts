@@ -162,7 +162,7 @@ export class AiService {
         })
 
         return await generateText({
-            model: this.openAi('gpt-4o-2024-05-13'),
+            model: this.openAi('gpt-4o-mini-2024-07-18'),
             messages,
             system,
             maxSteps: 5,
