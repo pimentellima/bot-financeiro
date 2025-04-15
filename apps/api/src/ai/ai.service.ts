@@ -29,7 +29,7 @@ export class AiService {
             description:
                 "Generate a postgreSQL compatible query to get information from the database based on the user's question",
             parameters: z.object({
-                query: z.string(),
+                query: z.string().describe(`The user question. Current date is: ${new Date()}`),
             }),
             execute: async ({ query }) => {
                 return { query }
@@ -43,7 +43,7 @@ export class AiService {
                 description: z.string().min(1),
                 amount: z.number().transform((val) => val.toString()),
                 date: z.coerce
-                    .date()
+                    .date().describe(`Current date is: ${new Date()}`)
                     .optional()
                     .transform((val) => (val ? convertDate(val) : undefined)),
             }),
