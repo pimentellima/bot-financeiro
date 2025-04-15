@@ -55,10 +55,24 @@ export class WebhookController {
                 await this.chatService.findOrCreateChatByUserId(user.id)
             ).messages as Message[]
 
+            const messageId = data.entry[0].changes[0].value.messages?.[0].id
+            const age =
+                Math.floor(Date.now() / 1000) -
+                Number(data.entry[0].changes[0].value.messages?.[0].timestamp)
+                
+            if (
+                userMessages.findIndex(
+                    (message) => message.id === messageId
+                ) !== -1 ||
+                age > 60
+            ) {
+                return
+            }
+
             const messages: Message[] = [
                 ...userMessages.slice(-20),
                 {
-                    id: crypto.randomUUID(),
+                    id: messageId || crypto.randomUUID(),
                     role: 'user',
                     content: message,
                 },
@@ -68,6 +82,7 @@ export class WebhookController {
                 messages,
                 user.id
             )
+
             await this.chatService.saveChat(
                 appendResponseMessages({
                     messages,
