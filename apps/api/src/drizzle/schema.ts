@@ -28,8 +28,10 @@ export const statements = pgTable('statements', {
         .notNull(),
     description: text('description'),
     date: date('date'),
+    dueDate: date('due_date'),
     amount: numeric('amount', { precision: 10, scale: 2 }),
     type: statementTypeEnum('type').notNull().default('expense'),
+    paid: boolean('paid').default(true),
     createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
