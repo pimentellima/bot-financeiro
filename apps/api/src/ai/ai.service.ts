@@ -59,18 +59,20 @@ export class AiService {
             parameters: z.object({
                 description: z.string().min(1),
                 amount: z.number().transform((val) => val.toString()),
+                type: z.enum(['income', 'expense']),
                 date: z.coerce
                     .date()
                     .describe(`Current date is: ${new Date()}`)
                     .optional()
                     .transform((val) => (val ? convertDate(val) : undefined)),
             }),
-            execute: async ({ description, amount, date }) => {
+            execute: async ({ description, amount, date, type }) => {
                 await this.db.insert(schema.statements).values({
                     userId,
                     amount,
                     description,
                     date,
+                    type
                 })
 
                 return `✅ Extrato criado: "${description}" of $${amount}`
@@ -132,18 +134,23 @@ export class AiService {
 
 const system = `You are a helpful financial assistant. Use the tools provided to answer questions. If needed, you will
         query the database to get the information or insert records.
-        Here's the statements table: 
+        Here's the schema: 
+        -------
+        CREATE TYPE statement_type AS ENUM ('income', 'expense');
+
         CREATE TABLE statements (
             id SERIAL PRIMARY KEY,
-            user_id SERIAL NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
             description TEXT,
             date DATE,
             amount NUMERIC(10, 2),
-            created_at TEXT DEFAULT 'now()'
+            type statement_type NOT NULL DEFAULT 'expense',
+            created_at TIMESTAMP NOT NULL DEFAULT NOW()
         );
+        ------
         If the user asks about financial information, only respond to questions using information from tool calls.
         If the user asks to schedule a reminder, use the createReminder tool.
-        If the user asks to create a financial statement, use the createStatement tool.
+        If the user asks to create a financial statement, use the createStatement tool. Do not need to ask for confirmation.
         If the user asks to query the database, use the generateQuery tool to create a query and then use the queryDatabase tool to execute it.
 
         When you use the ILIKE operator, convert both the search term and the field to lowercase using LOWER() function. For example: LOWER(description) ILIKE LOWER('%search_term%').

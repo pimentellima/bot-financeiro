@@ -4,6 +4,7 @@ import {
     integer,
     json,
     numeric,
+    pgEnum,
     pgTable,
     serial,
     text,
@@ -18,6 +19,8 @@ export const users = pgTable('users', {
     emailVerified: boolean('email_verified').default(false),
 })
 
+export const statementTypeEnum = pgEnum('statement_type', ['income', 'expense'])
+
 export const statements = pgTable('statements', {
     id: serial('id').primaryKey(),
     userId: serial('user_id')
@@ -26,6 +29,7 @@ export const statements = pgTable('statements', {
     description: text('description'),
     date: date('date'),
     amount: numeric('amount', { precision: 10, scale: 2 }),
+    type: statementTypeEnum('type').notNull().default('expense'),
     createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
