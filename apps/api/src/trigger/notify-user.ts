@@ -9,7 +9,6 @@ export const notifyUserTask = task({
     },
     onSuccess: async () => logger.log('success'),
     run: async (payload: { number: string; message: string }) => {
-        logger.log('Running task')
         const response = await sendMessageToWhatsapp(
             process.env[EnvironmentEnums.WHATSAPP_API_TOKEN]!,
             process.env[EnvironmentEnums.WHATSAPP_NUMBER_ID]!,

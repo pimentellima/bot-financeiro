@@ -4,6 +4,7 @@ import { NodePgDatabase } from 'drizzle-orm/node-postgres'
 import { DRIZZLE } from 'src/drizzle/drizzle.constants'
 import * as schema from '../drizzle/schema'
 import { CoreMessage, Message } from 'ai'
+import { updateChatMessages } from 'src/drizzle/queries/chat'
 
 @Injectable()
 export class ChatService {
@@ -30,18 +31,6 @@ export class ChatService {
     }
 
     async saveChat(messages: Message[], userId: number) {
-        await this.db
-            .insert(schema.chats)
-            .values({
-                messages: JSON.stringify(messages),
-                userId,
-            })
-            .onConflictDoUpdate({
-                target: schema.chats.userId,
-                set: {
-                    messages: JSON.stringify(messages),
-                    updatedAt: new Date(),
-                },
-            })
+        await updateChatMessages(this.db, userId, messages)
     }
 }

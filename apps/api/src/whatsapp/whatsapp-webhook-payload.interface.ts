@@ -35,7 +35,7 @@ export interface Message {
     from: string
     id: string
     timestamp: string
-    type: 'text' | 'image' | 'sticker' | 'unknown' | 'button' | 'interactive' | 'reaction'
+    type: 'text' | 'image' | 'sticker' | 'unknown' | 'button' | 'interactive' | 'reaction' | 'audio'
     text?: {
         body: string
     }

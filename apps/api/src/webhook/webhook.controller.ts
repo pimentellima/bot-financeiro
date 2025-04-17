@@ -3,24 +3,23 @@ import {
     Controller,
     Get,
     HttpCode,
+    InternalServerErrorException,
     Post,
     Query,
-    Req,
-    UnprocessableEntityException,
+    UnprocessableEntityException
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { WhatsappService } from 'src/whatsapp/whatsapp.service'
-import { AiService } from '../ai/ai.service'
-import { WhatsAppWebhookPayload } from 'src/whatsapp/whatsapp-webhook-payload.interface'
+import { Message } from 'ai'
+import { ChatService } from 'src/chat/chat.service'
+import { userInteractionTask } from 'src/trigger/user-interaction'
 import { UsersService } from 'src/users/users.service'
 import { getNumberFromWaId } from 'src/whatsapp/get-number-from-waid'
-import { ChatService } from 'src/chat/chat.service'
-import { appendResponseMessages, Message } from 'ai'
+import { WhatsAppWebhookPayload } from 'src/whatsapp/whatsapp-webhook-payload.interface'
+import { WhatsappService } from 'src/whatsapp/whatsapp.service'
 
 @Controller('webhook')
 export class WebhookController {
     constructor(
-        private readonly aiService: AiService,
         private readonly whatsappService: WhatsappService,
         private readonly chatService: ChatService,
         private readonly userService: UsersService
@@ -41,79 +40,71 @@ export class WebhookController {
     }
 
     @Post()
-    @HttpCode(201)
-    async respondMessage(@Body() data: WhatsAppWebhookPayload) {
-        if (data.entry[0].changes[0]?.value.messages?.[0]?.type === 'text') {
-            const waId = data.entry[0].changes[0].value.contacts?.[0].wa_id
-            if (!waId) {
-                throw new UnprocessableEntityException('Invalid waId')
+    @HttpCode(200)
+    async triggerInteractionTask(@Body() payload: WhatsAppWebhookPayload) {
+        const waId = payload.entry[0].changes[0].value.contacts?.[0].wa_id
+        if (!waId) {
+            throw new UnprocessableEntityException('Invalid waID')
+        }
+
+        const user = await this.userService.findOrCreateUserByWaId(waId)
+        if (!user) {
+            throw new InternalServerErrorException('Error finding or creating user')
+        }
+
+        const chat = await this.chatService.findOrCreateChatByUserId(user.id)
+        const userMessages = chat.messages as Message[]
+        const messageId = payload.entry[0].changes[0].value.messages?.[0].id
+        const age =
+            Math.floor(Date.now() / 1000) -
+            Number(payload.entry[0].changes[0].value.messages?.[0].timestamp)
+        if (
+            userMessages.findIndex((message) => message.id === messageId) !==
+                -1 ||
+            age > 60
+        ) {
+            return
+        }
+
+        const number = getNumberFromWaId(waId)
+        let textMessage: string | undefined
+        let audioArrayBuffer: ArrayBuffer | undefined
+        const messageType =
+            payload.entry[0].changes[0]?.value.messages?.[0]?.type
+        if (messageType === 'text') {
+            textMessage =
+                payload.entry[0].changes[0].value.messages?.[0].text?.body
+        } else if (messageType === 'audio') {
+            const mediaId =
+                payload.entry[0].changes[0].value.messages?.[0].audio?.id
+            if (!mediaId) {
+                throw new UnprocessableEntityException('No mediaId found')
             }
-            const user = await this.userService.findOrCreateUserByWaId(waId)
-            const message = getMessageFromPayload(data)
-
-            const userMessages = (
-                await this.chatService.findOrCreateChatByUserId(user.id)
-            ).messages as Message[]
-
-            const messageId = data.entry[0].changes[0].value.messages?.[0].id
-            const age =
-                Math.floor(Date.now() / 1000) -
-                Number(data.entry[0].changes[0].value.messages?.[0].timestamp)
-                
-            if (
-                userMessages.findIndex(
-                    (message) => message.id === messageId
-                ) !== -1 ||
-                age > 60
-            ) {
-                return
-            }
-
-            const messages: Message[] = [
-                ...userMessages.slice(-20),
-                {
-                    id: messageId || crypto.randomUUID(),
-                    role: 'user',
-                    content: message,
-                },
-            ]
-
-            const aiResponse = await this.aiService.continueConversation(
-                messages,
-                user.id
+            const media = await this.whatsappService.getMediaMetadata(mediaId)
+            audioArrayBuffer = await this.whatsappService.getMediaBufferByUrl(
+                media.url
             )
-
-            await this.chatService.saveChat(
-                appendResponseMessages({
-                    messages,
-                    responseMessages: aiResponse.response.messages,
-                }),
-                user.id
-            )
+        } else {
             await this.whatsappService.sendMessage(
-                getNumberFromWaId(waId),
-                aiResponse.text
+                number,
+                'Não suportamos esse tipo de mensagem.'
             )
+            return
         }
-    }
-}
 
-function getMessageFromPayload(payload: WhatsAppWebhookPayload): string {
-    const entries = payload.entry
-    let messageBody = ''
-    for (const entry of entries) {
-        for (const change of entry.changes) {
-            const value = change.value
-            if (value) {
-                if (value.messages) {
-                    for (const message of value.messages) {
-                        if (message.type === 'text') {
-                            messageBody = message?.text?.body || 'No message'
-                        }
-                    }
-                }
-            }
-        }
+        userInteractionTask.trigger(
+            {
+                messageId: messageId || crypto.randomUUID(),
+                userId: user.id,
+                userNumber: number,
+                audioBuffer: audioArrayBuffer
+                    ? Buffer.from(audioArrayBuffer)
+                    : undefined,
+                messageType,
+                textMessage,
+                userMessages,
+            },
+            { concurrencyKey: `${user.id}-interaction` }
+        )
     }
-    return messageBody
 }

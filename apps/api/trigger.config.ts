@@ -21,5 +21,8 @@ export default defineConfig({
             randomize: true,
         },
     },
+    build: {
+        external: ['@nestjs/common'],
+    },
     dirs: ['./src/trigger'],
 })

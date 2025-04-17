@@ -1,12 +1,11 @@
 import { Controller, Post, Body, HttpStatus, HttpCode } from '@nestjs/common'
-import { NotifyUserService } from 'src/notify-user/notify-user.service'
+import { notifyUserTask } from 'src/trigger/notify-user'
 import { WhatsappService } from 'src/whatsapp/whatsapp.service'
 
 @Controller('conversation')
 export class ConversationController {
     constructor(
         private readonly whatsapp: WhatsappService,
-        private readonly notifyUser: NotifyUserService
     ) {}
 
     @Post('send')
@@ -20,10 +19,9 @@ export class ConversationController {
     async scheduleMessage() {
         const today = new Date()
         const date = new Date(today.getTime() + 1 * 1000)
-        return await this.notifyUser.scheduleReminderForUser(
-            17,
-            date,
-            'Hello'
+        return notifyUserTask.trigger(
+            { message: 'Hello', number: '75991698122' },
+            { concurrencyKey: '-reminder', delay: date }
         )
     }
 }
